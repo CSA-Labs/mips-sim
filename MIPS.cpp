@@ -168,12 +168,10 @@ class DataMem
       if (readmem == bitset<1>(1))
       {
           readdata = bitset<32>(0);
+
           if (address+3 < DMem.size())
           {
-            for (int i = 0; i < 4; i++)
-            {
-              readdata = (DMem[address + 3].to_ulong() << 24) | (DMem[address + 2].to_ulong() << 16) | (DMem[address + 1].to_ulong() << 8) | DMem[address].to_ulong();
-            }
+            readdata = (DMem[address].to_ulong() << 24) | (DMem[address + 1].to_ulong() << 16) | (DMem[address + 2].to_ulong() << 8) | DMem[address + 3].to_ulong();
           }
       }
       if (writemem == bitset<1>(1))
@@ -251,8 +249,10 @@ int main()
 
           ALUOP = ADDU;
 
-          myRF.ReadWrite(Rs, Rt, bitset<5>(), bitset<32>(), bitset<1>(0)); // Read Rs, and Rt
-          myALU.ALUOperation(ALUOP, myRF.ReadData1, myRF.ReadData2);        // Perform ALU Operation
+          myRF.ReadWrite(Rs, Rt, bitset<5>(), bitset<32>(), bitset<1>(0));            // write to Rs
+
+          myALU.ALUOperation(ALUOP, myRF.ReadData1, myRF.ReadData2);                   // Perform ALU Operation
+
           myRF.ReadWrite(bitset<5>(), bitset<5>(), Rd, myALU.ALUresult, bitset<1>(1)); // Write to Rd
 
           break;
@@ -262,7 +262,9 @@ int main()
           ALUOP = SUBU;
 
           myRF.ReadWrite(Rs, Rt, bitset<5>(), bitset<32>(), bitset<1>(0));
+
           myALU.ALUOperation(ALUOP, myRF.ReadData1, myRF.ReadData2);
+
           myRF.ReadWrite(bitset<5>(), bitset<5>(), Rd, myALU.ALUresult, bitset<1>(1));
 
           break;
@@ -272,7 +274,9 @@ int main()
           ALUOP = AND;
 
           myRF.ReadWrite(Rs, Rt, bitset<5>(), bitset<32>(), bitset<1>(0));
+
           myALU.ALUOperation(ALUOP, myRF.ReadData1, myRF.ReadData2);
+
           myRF.ReadWrite(bitset<5>(), bitset<5>(), Rd, myALU.ALUresult, bitset<1>(1));
 
           break;
@@ -282,8 +286,11 @@ int main()
           ALUOP = OR;
 
           myRF.ReadWrite(Rs, Rt, bitset<5>(), bitset<32>(), bitset<1>(0));
+
           myALU.ALUOperation(ALUOP, myRF.ReadData1, myRF.ReadData2);
+
           myRF.ReadWrite(bitset<5>(), bitset<5>(), Rd, myALU.ALUresult, bitset<1>(1));
+
 
           break;
 
@@ -292,8 +299,11 @@ int main()
           ALUOP = NOR;
 
           myRF.ReadWrite(Rs, Rt, bitset<5>(), bitset<32>(), bitset<1>(0));
+
           myALU.ALUOperation(ALUOP, myRF.ReadData1, myRF.ReadData2);
+
           myRF.ReadWrite(bitset<5>(), bitset<5>(), Rd, myALU.ALUresult, bitset<1>(1));
+
 
           break;
 
@@ -323,8 +333,10 @@ int main()
             signExtendedImm = signExtendedImm | bitset<32>(0xFFFF0000);
           }
 
-          myRF.ReadWrite(Rs, Rt, bitset<5>(), bitset<32>(), bitset<1>(0));
+          myRF.ReadWrite(Rs, bitset<5>(), bitset<5>(), bitset<32>(), bitset<1>(0));
+
           myALU.ALUOperation(ADDIU, myRF.ReadData1, signExtendedImm);
+
           myRF.ReadWrite(bitset<5>(), bitset<5>(), Rt, myALU.ALUresult, bitset<1>(1)); // write to Rt
 
           break;
@@ -340,9 +352,12 @@ int main()
             signExtendedImm = signExtendedImm | bitset<32>(0xFFFF0000);
           }
 
-          myRF.ReadWrite(Rs, bitset<5>(), bitset<5>(), bitset<32>(), bitset<1>(0)); // read from Rs
+          myRF.ReadWrite(Rs, bitset<5>(), bitset<5>(), bitset<32>(), bitset<1>(0)); // write to Rs
+
           myALU.ALUOperation(ADDU, myRF.ReadData1, signExtendedImm); // add base + offset
+
           myDataMem.MemoryAccess(myALU.ALUresult, bitset<32>(), bitset<1>(1), bitset<1>(0)); // read from memory
+
           myRF.ReadWrite(bitset<5>(), bitset<5>(), Rt, myDataMem.readdata, bitset<1>(1)); // write to Rt
 
           break;
@@ -358,8 +373,10 @@ int main()
             signExtendedImm = signExtendedImm | bitset<32>(0xFFFF0000);
           }
 
-          myRF.ReadWrite(Rt, bitset<5>(), bitset<5>(), bitset<32>(), bitset<1>(0)); // read from Rt
+          myRF.ReadWrite(Rs, Rt, bitset<5>(), bitset<32>(), bitset<1>(0)); // read from Rs, Rt
+
           myALU.ALUOperation(ADDU, myRF.ReadData1, signExtendedImm); // add base + offset
+
           myDataMem.MemoryAccess(myALU.ALUresult, myRF.ReadData2, bitset<1>(0), bitset<1>(1)); // write to memory
 
           break;
@@ -374,11 +391,9 @@ int main()
           break;
       }
     }
-
     PC = PC.to_ulong() + 4;
+    myRF.OutputRF(); // dump RF; 
   }
-
-  myRF.OutputRF(); // dump RF; 
   myDataMem.OutputDataMem(); // dump data mem
 
   return 0;
