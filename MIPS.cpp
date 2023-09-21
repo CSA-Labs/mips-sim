@@ -178,12 +178,15 @@ class DataMem
       {
         if (address+3 < DMem.size())
         {
-          DMem[address] = bitset<8>((WriteData.to_ulong() >> 0) & 0xFF);
-          DMem[address + 1] = bitset<8>((WriteData.to_ulong() >> 8) & 0xFF);
-          DMem[address + 2] = bitset<8>((WriteData.to_ulong() >> 16) & 0xFF);
-          DMem[address + 3] = bitset<8>((WriteData.to_ulong() >> 24) & 0xFF);
+          DMem[address + 3] = bitset<8>((WriteData.to_ulong() >> 0) & 0xFF);
+          DMem[address + 2] = bitset<8>((WriteData.to_ulong() >> 8) & 0xFF);
+          DMem[address + 1] = bitset<8>((WriteData.to_ulong() >> 16) & 0xFF);
+          DMem[address] = bitset<8>((WriteData.to_ulong() >> 24) & 0xFF);
         }
       }
+      cout<<"WriteData: " << WriteData << endl;
+      cout <<"DMem: "<< DMem[address] << DMem[address + 1] << DMem[address + 2] << DMem[address + 3] << endl;
+
       return readdata;
     }   
 
@@ -374,9 +377,7 @@ int main()
           }
 
           myRF.ReadWrite(Rs, Rt, bitset<5>(), bitset<32>(), bitset<1>(0)); // read from Rs, Rt
-
           myALU.ALUOperation(ADDU, myRF.ReadData1, signExtendedImm); // add base + offset
-
           myDataMem.MemoryAccess(myALU.ALUresult, myRF.ReadData2, bitset<1>(0), bitset<1>(1)); // write to memory
 
           break;
