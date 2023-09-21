@@ -37,13 +37,12 @@ class RF
 
     void ReadWrite(bitset<5> RdReg1, bitset<5> RdReg2, bitset<5> WrtReg, bitset<32> WrtData, bitset<1> WrtEnable)
     {   
-      /**
-       * @brief Reads or writes data from/to the Register.
-       *
-       * This function is used to read or write data from/to the register, depending on the value of WrtEnable.
-       * Put the read results to the ReadData1 and ReadData2.
-       */
-      // TODO: implement!               
+      if (WrtEnable == bitset<1>(1))
+      {
+        Registers[WrtReg.to_ulong()] = WrtData;
+      }
+      ReadData1 = Registers[RdReg1.to_ulong()];
+      ReadData2 = Registers[RdReg2.to_ulong()]; 
     }
 
     void OutputRF()
@@ -72,16 +71,32 @@ class ALU
 {
   public:
     bitset<32> ALUresult;
+
     bitset<32> ALUOperation (bitset<3> ALUOP, bitset<32> oprand1, bitset<32> oprand2)
-    {   
-      /**
-       * @brief Implement the ALU operation here.
-       *
-       * ALU operation depends on the ALUOP, which are definded as ADDU, SUBU, etc. 
-       */
-      // TODO: implement!
-      return ALUresult;
-    }            
+    {
+      if (ALUOP == bitset<3>(ADDU) || ALUOP == bitset<3>(ADDIU))
+      {
+        ALUresult = oprand1.to_ulong() + oprand2.to_ulong();
+      }
+      else if (ALUOP == bitset<3>(SUBU))
+      {
+        ALUresult = oprand1.to_ulong() - oprand2.to_ulong();
+      }
+      else if (ALUOP == bitset<3>(AND))
+      {
+        ALUresult = oprand1 & oprand2;
+      }
+      else if (ALUOP == bitset<3>(OR))
+      {
+        ALUresult = oprand1 | oprand2;
+      }
+      else if (ALUOP == bitset<3>(NOR))
+      {
+        ALUresult = ~(oprand1 | oprand2);
+      }
+  
+    return ALUresult;
+    }        
 };
 
 
@@ -111,19 +126,13 @@ class INSMem
 
     bitset<32> ReadMemory (bitset<32> ReadAddress) 
     {    
-      // TODO: implement!
-      /**
-       * @brief Read Instruction Memory (IMem).
-       *
-       * Read the byte at the ReadAddress and the following three byte,
-       * and return the read result. 
-       */
-      return Instruction;     
+      int address = ReadAddress.to_ulong();
+      bitset<32> Instruction = (IMem[address].to_ulong() << 24) | (IMem[address+1].to_ulong() << 16) | (IMem[address+2].to_ulong() << 8) | (IMem[address+3].to_ulong());
+      return Instruction;    
     }     
 
   private:
     vector<bitset<8> > IMem;
-
 };
 
 class DataMem    
@@ -151,15 +160,23 @@ class DataMem
     }  
     bitset<32> MemoryAccess (bitset<32> Address, bitset<32> WriteData, bitset<1> readmem, bitset<1> writemem) 
     {    
-      /**
-       * @brief Reads/writes data from/to the Data Memory.
-       *
-       * This function is used to read/write data from/to the DataMem, depending on the readmem and writemem.
-       * First, if writemem enabled, WriteData should be written to DMem, clear or ignore the return value readdata,
-       * and note that 32-bit WriteData will occupy 4 continious Bytes in DMem. 
-       * If readmem enabled, return the DMem read result as readdata.
-       */
-      // TODO: implement!
+      int address = Address.to_ulong();
+      bitset<32> readdata;
+      if (readmem == bitset<1>(1))
+      {
+          readdata = bitset<32>(0);
+          for (int i = 0; i < 4; i++)
+          {
+            readdata = (DMem[address + 3].to_ulong() << 24) | (DMem[address + 2].to_ulong() << 16) | (DMem[address + 1].to_ulong() << 8) | DMem[address].to_ulong();
+          }
+      }
+      if (writemem == bitset<1>(1))
+      {
+          DMem[address] = bitset<8>((WriteData.to_ulong() >> 0) & 0xFF);
+          DMem[address + 1] = bitset<8>((WriteData.to_ulong() >> 8) & 0xFF);
+          DMem[address + 2] = bitset<8>((WriteData.to_ulong() >> 16) & 0xFF);
+          DMem[address + 3] = bitset<8>((WriteData.to_ulong() >> 24) & 0xFF);
+      }
       return readdata;     
     }   
 
@@ -193,65 +210,159 @@ int main()
   ALU myALU;
   INSMem myInsMem;
   DataMem myDataMem;
-  bitset<32> PC(0); // Program Counter
+  bitset<32> PC(0);                                                            // Program Counter
 
-  while (1)  // TODO: implement!
+  while (1)                                                                     // TODO: implement!
   {
-    bitset<32> instruction = myInsMem.ReadMemory(PC); // Fetch instruction from memory
+    bitset<32> Instruction = myInsMem.ReadMemory(PC);                         // Fetch Instruction from memory
 
-    if (instruction == bitset<32>(HALT)) // If current instruction is HALT then terminate
+    if (Instruction == bitset<32>(HALT))                                      // If current Instruction is HALT then terminate
     {
       break;
     }
 
-    bitset<6> opcode = (instruction >> 26).to_ulong();
-    bitset<5> Rs = ((instruction >> 21) & bitset<32>(0x1F)).to_ulong();
-    bitset<5> Rt = ((instruction >> 16) & bitset<32>(0x1F)).to_ulong();
-    bitset<5> Rd = ((instruction >> 11) & bitset<32>(0x1F)).to_ulong();
-    bitset<16> imm = (instruction & bitset<32>(0xFFFF)).to_ulong();
+    bitset<6> opcode = (Instruction >> 26).to_ulong();
+    bitset<5> Rs = ((Instruction >> 21) & bitset<32>(0x1F)).to_ulong();
+    bitset<5> Rt = ((Instruction >> 16) & bitset<32>(0x1F)).to_ulong();
+    bitset<5> Rd = ((Instruction >> 11) & bitset<32>(0x1F)).to_ulong();
+    bitset<5> shamt = ((Instruction >> 6) & bitset<32>(0x1F)).to_ulong();
+    bitset<6> funct = (Instruction & bitset<32>(0x3F)).to_ulong();
+    bitset<26> address = (Instruction & bitset<32>(0x3FFFFFF)).to_ulong();
+    bitset<16> imm = (Instruction & bitset<32>(0xFFFF)).to_ulong();
 
-    switch (opcode.to_ulong())
+    if (opcode.to_ulong() == 0)                                             // R-Type Instruction
     {
-      case ADDU:
-        myALU.ALUOperation(bitset<6>(ADDU), myRF.ReadData1, myRF.ReadData2);
-        break;
-      case SUBU:
-        myALU.ALUOperation(bitset<6>(ADDU), myRF.ReadData1, myRF.ReadData2);
-        break;
-      case ADDIU:
-        myALU.ALUOperation(bitset<6>(ADDU), myRF.ReadData1, imm);
-        break;
-      case AND:
-        myALU.ALUOperation(bitset<6>(AND), myRF.ReadData1, myRF.ReadData2);
-        break;
-      case OR:  
-        myALU.ALUOperation( bitset<6>(OR), myRF.ReadData1, myRF.ReadData2);
-        break;
-      case NOR:
-        myALU.ALUOperation(bitset<6>(NOR), myRF.ReadData1, myRF.ReadData2);
-      case BEQ:
-        if(myRF.ReadData1 == myRF.ReadData2)
-        {
-          PC = PC.to_ulong() + (imm.to_ulong());
-        }
-        break; 
-      case J:
-        PC = (PC.to_ulong() & 0xF0000000) | (instruction & 0x03FFFFFF);
-          break;
-      case LW:
-        myDataMem.MemoryAccess(myRF.ReadData1 + imm, bitset<32>(), bitset<1>(1), bitset<1>(0));
-          break;
-      case SW:
-        myDataMem.MemoryAccess(myRF.ReadData1 + imm, myRF.ReadData2, bitset<1>(0), bitset<1>(1));
-          break;
-      default:
-          break;
-        }
-      
-      if (opcode.to_ulong() != BEQ && opcode.to_ulong() != SW)
+      switch(funct.to_ulong())
       {
-        myRF.ReadWrite(Rs, Rt, Rd, myALU.ALUresult, bitset<1>(1));
+        case ADDU:
+
+          bitset<3> ALUOP = ADDU;
+
+          myRF.ReadWrite(Rs, Rt, bitset<5>(), bitset<32>(), bitset<1>(0)); // Read Rs, and Rt
+          myALU.ALUOperation(ALUOP, myRF.ReadData1, myRF.ReadData2);        // Perform ALU Operation
+          myRF.ReadWrite(bitset<5>(), bitset<5>(), Rd, myALU.ALUresult, bitset<1>(1)); // Write to Rd
+
+          break;
+
+        case SUBU:
+
+          bitset<3> ALUOP = SUBU;
+
+          myRF.ReadWrite(Rs, Rt, bitset<5>(), bitset<32>(), bitset<1>(0));
+          myALU.ALUOperation(ALUOP, myRF.ReadData1, myRF.ReadData2);
+          myRF.ReadWrite(bitset<5>(), bitset<5>(), Rd, myALU.ALUresult, bitset<1>(1));
+
+          break;
+
+        case AND:
+
+          bitset<3> ALUOP = AND;
+
+          myRF.ReadWrite(Rs, Rt, bitset<5>(), bitset<32>(), bitset<1>(0));
+          myALU.ALUOperation(ALUOP, myRF.ReadData1, myRF.ReadData2);
+          myRF.ReadWrite(bitset<5>(), bitset<5>(), Rd, myALU.ALUresult, bitset<1>(1));
+
+          break;
+
+        case OR:
+
+          bitset<3> ALUOP = OR;
+
+          myRF.ReadWrite(Rs, Rt, bitset<5>(), bitset<32>(), bitset<1>(0));
+          myALU.ALUOperation(ALUOP, myRF.ReadData1, myRF.ReadData2);
+          myRF.ReadWrite(bitset<5>(), bitset<5>(), Rd, myALU.ALUresult, bitset<1>(1));
+
+          break;
+
+        case NOR:
+
+          bitset<3> ALUOP = NOR;
+
+          myRF.ReadWrite(Rs, Rt, bitset<5>(), bitset<32>(), bitset<1>(0));
+          myALU.ALUOperation(ALUOP, myRF.ReadData1, myRF.ReadData2);
+          myRF.ReadWrite(bitset<5>(), bitset<5>(), Rd, myALU.ALUresult, bitset<1>(1));
+
+          break;
+
+        default:
+
+          break;
       }
+    }
+    else if (opcode.to_ulong() == J)                  // J-Type Instruction
+    {
+      PC = (PC.to_ulong() & 0xF0000000) | (Instruction.to_ulong() & 0x03FFFFFF);
+    }
+    else                                            // I-Type Instruction
+    {
+      switch (opcode.to_ulong())
+      {
+        case ADDIU:
+          // sign extend the 16 bit imm
+          bool sign = imm[15];
+
+          bitset<32> signExtendedImm(imm.to_ulong());
+
+          if(sign)   // if negative sign extend with 1's, not useful since we are only using unsigned numbers
+          {
+            signExtendedImm = signExtendedImm | bitset<32>(0xFFFF0000);
+          }
+
+          myRF.ReadWrite(Rs, Rt, bitset<5>(), bitset<32>(), bitset<1>(0));
+          myALU.ALUOperation(ADDIU, myRF.ReadData1, signExtendedImm);
+          myRF.ReadWrite(bitset<5>(), bitset<5>(), Rt, myALU.ALUresult, bitset<1>(1)); // write to Rt
+
+          break;
+
+        case LW:
+          // sign extend the 16 bit
+          bool sign = imm[15];
+
+          bitset<32> signExtendedImm(imm.to_ulong());
+
+          if(sign)
+          {
+            signExtendedImm = signExtendedImm | bitset<32>(0xFFFF0000);
+          }
+
+          myRF.ReadWrite(Rs, bitset<5>(), bitset<5>(), bitset<32>(), bitset<1>(0)); // read from Rs
+          myALU.ALUOperation(ADDU, myRF.ReadData1, signExtendedImm); // add base + offset
+          myDataMem.MemoryAccess(myALU.ALUresult, bitset<32>(), bitset<1>(1), bitset<1>(0)); // read from memory
+          myRF.ReadWrite(bitset<5>(), bitset<5>(), Rt, myDataMem.readdata, bitset<1>(1)); // write to Rt
+
+          break;
+
+        case SW:
+        // sign extend the 16 bit imm then add in alu (base address from register + imm (offset)) then store to memory
+          bool sign = imm[15];
+
+          bitset<32> signExtendedImm(imm.to_ulong());
+
+          if(sign)
+          {
+            signExtendedImm = signExtendedImm | bitset<32>(0xFFFF0000);
+          }
+
+          myRF.ReadWrite(Rt, bitset<5>(), bitset<5>(), bitset<32>(), bitset<1>(0)); // read from Rt
+          myALU.ALUOperation(ADDU, myRF.ReadData1, signExtendedImm); // add base + offset
+          myDataMem.MemoryAccess(myALU.ALUresult, myRF.ReadData2, bitset<1>(0), bitset<1>(1)); // write to memory
+
+          break;
+
+        case BEQ:
+
+          if(myRF.ReadData1 == myRF.ReadData2)
+          {
+            PC = PC.to_ulong() + (imm.to_ulong());
+          }
+
+          break;
+      }
+      
+      // if (opcode.to_ulong() != BEQ && opcode.to_ulong() != SW)
+      // {
+      //   myRF.ReadWrite(Rs, Rt, Rd, myALU.ALUresult, bitset<1>(1));
+      // }
 
     PC = PC.to_ulong() + 4;
   }
