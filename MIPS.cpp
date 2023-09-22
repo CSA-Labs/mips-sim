@@ -92,7 +92,19 @@ class ALU
       }
       else if (ALUOP == bitset<3>(NOR))
       {
-        ALUresult = ~(oprand1 | oprand2);
+        ALUresult = ~(oprand1.to_ulong() | oprand2.to_ulong());
+
+        for (int i = 31; i >= 0; i--)
+        {
+          if (ALUresult[i] == 0)
+          {
+            break;
+          }
+          if (ALUresult[i] == 1)
+          {
+            ALUresult[i] = ~ALUresult[i];
+          }
+        }
       }
   
     return ALUresult;
@@ -318,7 +330,9 @@ int main()
 
     else if (opcode.to_ulong() == J)                  // J-Type Instruction
     {
-      PC = (PC.to_ulong() & 0xF0000000) | (myInsMem.Instruction.to_ulong() & 0x03FFFFFF);
+      // PC = (PC.to_ulong() & 0xF0000000) | (myInsMem.Instruction.to_ulong() & 0x03FFFFFF);
+      PC = PC.to_ulong() + (address.to_ulong() * 4);
+      continue;
     }
 
     else                                            // I-Type Instruction
@@ -384,14 +398,21 @@ int main()
 
         case BEQ:
 
+          myRF.ReadWrite(Rs, Rt, bitset<5>(), bitset<32>(), bitset<1>(0)); // read from Rs, Rt
           if(myRF.ReadData1 == myRF.ReadData2)
           {
-            PC = PC.to_ulong() + (imm.to_ulong());
+            PC = PC.to_ulong() + (imm.to_ulong() * 4);
           }
 
           break;
       }
     }
+    
+    if (opcode.to_ulong() == BEQ)
+    {
+      continue;
+    }
+
     PC = PC.to_ulong() + 4;
     myRF.OutputRF(); // dump RF; 
   }
